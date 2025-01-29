@@ -88,6 +88,7 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.2s ease;
+            margin-top: 10px; /* ボタン間の距離を設定 */
         }
 
         button:hover {
@@ -185,6 +186,7 @@
                 <input type="number" id="pages" min="1" value="1">
             </div>
             <button id="searchBtn">検索開始</button>
+            <button id="downloadCSVBtn" style="display: none;">CSVをダウンロード</button>
         </div>
 
         <div id="resultInfo" class="info" style="display: none;">
@@ -261,6 +263,8 @@
                 tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">該当するインシデントが見つかりません</td></tr>`;
                 document.getElementById("prevBtn").disabled = true;
                 document.getElementById("nextBtn").disabled = true;
+                document.getElementById("downloadCSVBtn").style.display = "none"; // データがない場合、CSVボタン非表示
+
                 return;
             }
 
@@ -275,6 +279,7 @@
                 tbody.appendChild(row);
             });
 
+            document.getElementById("downloadCSVBtn").style.display = totalHits > 0 ? "block" : "none";
             // ページネーションの更新
             document.getElementById("prevBtn").disabled = currentPage === 0;
             document.getElementById("nextBtn").disabled = end >= totalHits;
@@ -292,6 +297,14 @@
                 currentPage += 1;
                 updateResults();
             }
+        });
+        document.getElementById("downloadCSVBtn").addEventListener("click", () => {
+            let csv = "Timestamp,Name,Message\n" + allResults.map(r => `"${r.timestamp}","${r.name}","${r.message}"`).join("\n");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "twilio_incidents.csv";
+            link.click();
         });
     </script>
 </body>
