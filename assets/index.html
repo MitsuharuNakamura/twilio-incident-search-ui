@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twilio Incident Search</title>
+    <style>
+        /* ブランドカラーパレット */
+        :root {
+            --twilio-red: #F22F46;
+            --twilio-ink: #121C2D;
+            --twilio-white: #FFFFFF;
+            --twilio-saffron: #F2BE5A;
+            --twilio-sky: #51A9E3;
+            --twilio-sun: #FF7A00;
+        }
+
+        /* 基本デザイン */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--twilio-white);
+            color: var(--twilio-ink);
+            text-align: center;
+        }
+
+        /* ヘッダー */
+        header {
+            background-color: var(--twilio-red);
+            color: var(--twilio-white);
+            padding: 20px;
+            font-size: 1.5rem;
+        }
+
+        /* コンテンツのレイアウト */
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            background: var(--twilio-white);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            color: var(--twilio-ink);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+
+        /* 入力欄 */
+        input {
+            width: 100%;
+            max-width: 300px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            border-color: var(--twilio-sky);
+            box-shadow: 0 0 6px rgba(81, 169, 227, 0.5);
+            outline: none;
+        }
+
+        /* ボタン */
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--twilio-red);
+            color: var(--twilio-white);
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: var(--twilio-sun);
+            transform: scale(1.02);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* テーブル */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: var(--twilio-ink);
+            color: var(--twilio-white);
+        }
+
+        td {
+            background-color: #f9f9f9;
+        }
+
+        /* ページネーション */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            width: auto;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 5px;
+        }
+
+        /* 検索結果の情報 */
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--twilio-ink);
+        }
+
+        #totalHits {
+            font-weight: bold;
+            color: var(--twilio-red);
+        }
+
+        /* レスポンシブデザイン */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            input, button {
+                width: 100%;
+                max-width: none;
+            }
+            table {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Twilio Incident Search</h1>
+    </header>
+
+    <div class="container shadow">
+        <h2>インシデント検索</h2>
+        <div>
+            <div class="form-group">
+                <label for="keyword">検索キーワード:</label>
+                <input type="text" id="keyword" placeholder="例: Voice, SMS, Japan">
+            </div>
+            <div class="form-group">
+                <label for="pages">検索対象ページ数（1ページで過去3ヶ月分）:</label>
+                <input type="number" id="pages" min="1" value="1">
+            </div>
+            <button id="searchBtn">検索開始</button>
+        </div>
+
+        <div id="resultInfo" class="info" style="display: none;">
+            <p id="totalHits">Total Results: 0</p>
+            <p id="currentRange">Showing: 0 - 0</p>
+        </div>
+
+        <table id="resultsTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Name</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div class="pagination" style="display: none;">
+            <button id="prevBtn" disabled>Previous</button>
+            <button id="nextBtn">Next</button>
+        </div>
+    </div>
+
+    <script>
+        let allResults = [];
+        let currentPage = 0;
+        const resultsPerPage = 20;
+
+        document.getElementById("searchBtn").addEventListener("click", async () => {
+            const keyword = document.getElementById("keyword").value;
+            const pages = document.getElementById("pages").value;
+
+            const resultsTable = document.getElementById("resultsTable");
+            const tbody = resultsTable.querySelector("tbody");
+            tbody.innerHTML = ""; // 前回の結果をクリア
+
+            const response = await fetch("/searchIncidents", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({ searchWord: keyword, maxPages: pages }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                allResults = result.data;
+                currentPage = 0;
+                updateResults();
+                document.getElementById("resultInfo").style.display = "block";
+                document.querySelector(".pagination").style.display = "flex";
+                resultsTable.style.display = "table";
+            } else {
+                alert("検索に失敗しました: " + result.error);
+            }
+        });
+
+        function updateResults() {
+            const tbody = document.getElementById("resultsTable").querySelector("tbody");
+            tbody.innerHTML = ""; // 既存の内容をクリア
+
+            const totalHits = allResults.length;
+            const start = currentPage * resultsPerPage;
+            const end = Math.min(start + resultsPerPage, totalHits);
+            const currentResults = allResults.slice(start, end);
+
+            // Total Results の表示を更新
+            document.getElementById("totalHits").innerText = `Total Results: ${totalHits}`;
+            document.getElementById("currentRange").innerText = totalHits > 0 ? `Showing: ${start + 1} - ${end}` : "Showing: 0 - 0";
+
+            // 検索結果が0件のとき
+            if (totalHits === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;">該当するインシデントが見つかりません</td></tr>`;
+                document.getElementById("prevBtn").disabled = true;
+                document.getElementById("nextBtn").disabled = true;
+                return;
+            }
+
+            // 検索結果をテーブルに表示
+            currentResults.forEach((incident) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${incident.timestamp}</td>
+                    <td>${incident.name}</td>
+                    <td>${incident.message}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // ページネーションの更新
+            document.getElementById("prevBtn").disabled = currentPage === 0;
+            document.getElementById("nextBtn").disabled = end >= totalHits;
+        }
+
+        document.getElementById("prevBtn").addEventListener("click", () => {
+            if (currentPage > 0) {
+                currentPage -= 1;
+                updateResults();
+            }
+        });
+
+        document.getElementById("nextBtn").addEventListener("click", () => {
+            if ((currentPage + 1) * resultsPerPage < allResults.length) {
+                currentPage += 1;
+                updateResults();
+            }
+        });
+    </script>
+</body>
+</html>
