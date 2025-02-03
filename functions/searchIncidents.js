@@ -29,13 +29,14 @@ exports.handler = async function (context, event, callback) {
                                 const name = incident.name || "";
                                 const message = incident.message || "";
                                 const timestamp = incident.timestamp || "";
+                                const code = incident.code || ""; // codeの値を取得
 
                                 // キーワードでフィルタリング
                                 if (
                                     name.toLowerCase().includes(searchWord.toLowerCase()) ||
                                     message.toLowerCase().includes(searchWord.toLowerCase())
                                 ) {
-                                    results.push({ name, message, timestamp });
+                                    results.push({ name, message, timestamp, code }); // codeを結果に追加
                                 }
                             });
                         }

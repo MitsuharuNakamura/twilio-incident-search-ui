@@ -273,7 +273,7 @@
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${incident.timestamp}</td>
-                    <td>${incident.name}</td>
+                    <td><a href='https://status.twilio.com/incidents/${incident.code}' target="_blank">${incident.name}</a></td>
                     <td>${incident.message}</td>
                 `;
                 tbody.appendChild(row);
